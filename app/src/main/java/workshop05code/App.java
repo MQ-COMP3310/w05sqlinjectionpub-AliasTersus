@@ -35,18 +35,24 @@ public class App {
      */
     public static void main(String[] args) {
         SQLiteConnectionManager wordleDatabaseConnection = new SQLiteConnectionManager("words.db");
+        logger.log(Level.INFO,"App.java Program Initialised");
+
+        String Prompt = "Enter a 4 letter word for a guess or q to quit: ";
 
         wordleDatabaseConnection.createNewDatabase("words.db");
         if (wordleDatabaseConnection.checkIfConnectionDefined()) {
-            System.out.println("Wordle created and connected.");
+            logger.log(Level.INFO,"Wordle created and connected.");
         } else {
-            System.out.println("Not able to connect. Sorry!");
+            logger.log(Level.WARNING,"Not able to connect. Sorry!");
+            //System.out.println("Something went wrong.");
             return;
         }
         if (wordleDatabaseConnection.createWordleTables()) {
-            System.out.println("Wordle structures in place.");
+            logger.log(Level.INFO,"Wordle structures in place.");
+            //System.out.println("Something went wrong.");
         } else {
-            System.out.println("Not able to launch. Sorry!");
+            logger.log(Level.WARNING,"Not able to launch. Sorry!");
+            //System.out.println("Something went wrong.");
             return;
         }
 
@@ -56,43 +62,51 @@ public class App {
             String line;
             int i = 1;
             while ((line = br.readLine()) != null) {
-                System.out.println(line);
-                wordleDatabaseConnection.addValidWord(i, line);
+                if(line.matches("^[a-z]{4}$")){
+                    logger.log(Level.INFO,"Word added to list: {0}", line);
+                    wordleDatabaseConnection.addValidWord(i, line);
+                }else {
+                    logger.log(Level.SEVERE,"Attempted to add invalid word to wordbank: {0}", line);                    
+                }
                 i++;
             }
 
         } catch (IOException e) {
-            System.out.println("Not able to load . Sorry!");
-            System.out.println(e.getMessage());
+            logger.log(Level.WARNING,"Error reading user input.", e);
+            System.out.println("Something went wrong.");
             return;
         }
 
         // let's get them to enter a word
 
         try (Scanner scanner = new Scanner(System.in)) {
-            System.out.print("Enter a 4 letter word for a guess or q to quit: ");
-            String guess = scanner.nextLine();
-
-            while (!guess.equals("q")) {
-                System.out.println("You've guessed '" + guess+"'.");
-                if(!guess.matches("^[a-z]{4}$")){
-                    System.out.println("You have used invalid characters! Please try again.");
-                    System.out.print("Enter a 4 letter word for a guess or q to quit: " );
-                    guess = scanner.nextLine();
+            String guess;
+        
+            while (true) {
+                System.out.print(Prompt);
+                guess = scanner.nextLine().trim().toLowerCase();
+                if (guess.equals("q")) {
+                    logger.log(Level.INFO,"User quit program");
+                    break; // Exit if user types 'q'
                 }
-                
-                if (wordleDatabaseConnection.isValidWord(guess)) { 
-                    System.out.println("Success! It is in the the list.\n");
-                }else{
-                    System.out.println("Sorry. This word is NOT in the the list.\n");
+                System.out.println("You've guessed '" + guess + "'.");
+                if (!guess.matches("^[a-z]{4}$")) {
+                    System.out.println("You have used invalid characters or the word is not the correct length!\n");
+                    logger.log(Level.WARNING,"User inputted guess with an invalid length or character/s {0}", guess);
+                    continue; // Skip checking the word list and prompt again
                 }
+                if (wordleDatabaseConnection.isValidWord(guess)) {
+                    System.out.println("Success! It is in the list.\n");
+                } else {
+                    System.out.println("Sorry. This word is NOT in the list.\n");
+                    logger.log(Level.WARNING,"User inputted invalid guess: {0}", guess);
 
-                System.out.print("Enter a 4 letter word for a guess or q to quit: " );
-                guess = scanner.nextLine();
-            
+                }
             }
         } catch (NoSuchElementException | IllegalStateException e) {
-            e.printStackTrace();
+            logger.log(Level.WARNING, "User input issue.", e);
+            System.out.println("Something went wrong.");
+
         }
 
     }
